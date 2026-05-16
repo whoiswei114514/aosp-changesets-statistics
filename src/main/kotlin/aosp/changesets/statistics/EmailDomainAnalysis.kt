@@ -9,7 +9,14 @@ fun main() {
     val emailDomainToDeletionNum = mutableMapOf<String, Long>()
     val emailDomainToInsertionDeletionNum = mutableMapOf<String, Long>()
 
-    File("build").listFiles().forEach {
+    val buildDir = File("build")
+    val jsonFiles = buildDir.listFiles()?.filter { it.name.endsWith(".json") } ?: emptyList()
+    if (jsonFiles.isEmpty()) {
+        println("No JSON files found under ${buildDir.absolutePath}")
+        return
+    }
+
+    jsonFiles.forEach {
         if (!it.name.endsWith(".json")) {
             return@forEach
         }
@@ -31,24 +38,33 @@ fun main() {
             emailDomainToInsertionDeletionNum[emailDomain] = insertionDeletion + deletionOfCurrentChangeSet + insertionOfCurrentChangeSet
         }
     }
+    val analysisDir = File(buildDir, "analysis")
+    analysisDir.mkdirs()
+
     println("domain by changeset number:")
-    emailDomainToChangesetNum.toCsv()
+    emailDomainToChangesetNum.toCsv(File(analysisDir, "domain_by_changeset_number.csv"))
     println("---------------")
 
     println("domain by insertion:")
-    emailDomainToInsertionNum.toCsv()
+    emailDomainToInsertionNum.toCsv(File(analysisDir, "domain_by_insertion.csv"))
     println("---------------")
 
     println("domain by deletion:")
-    emailDomainToDeletionNum.toCsv()
+    emailDomainToDeletionNum.toCsv(File(analysisDir, "domain_by_deletion.csv"))
     println("---------------")
 
     println("domain by insertion+deletion:")
-    emailDomainToInsertionDeletionNum.toCsv()
+    emailDomainToInsertionDeletionNum.toCsv(File(analysisDir, "domain_by_insertion_deletion.csv"))
     println("---------------")
+
+    println("CSV outputs saved under ${analysisDir.absolutePath}")
 }
 
-fun MutableMap<String, Long>.toCsv() {
-    entries.sortedByDescending { it.value }
-        .forEach { println("${it.key}, ${it.value}") }
+fun MutableMap<String, Long>.toCsv(outputFile: File) {
+    val lines = entries.sortedByDescending { it.value }
+        .map { "${it.key},${it.value}" }
+    outputFile.printWriter().use { writer ->
+        lines.forEach { writer.println(it) }
+    }
+    lines.forEach { println(it) }
 }

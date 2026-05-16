@@ -44,6 +44,9 @@ fun dateFinished(date: LocalDate): Boolean {
 }
 
 val objectMapper = ObjectMapper()
+val httpClient = HttpClient.newBuilder()
+    .followRedirects(HttpClient.Redirect.ALWAYS)
+    .build()
 fun queryAndSave(date: LocalDate, startHour: String = "00", endHour: String = "23"  /* 00 - 23 */) {
     val file = if (startHour == "00" && endHour == "23")
         File("build/$date.json")
@@ -70,15 +73,11 @@ fun queryAndSave(date: LocalDate, startHour: String = "00", endHour: String = "2
 
 // https://stackoverflow.com/questions/45084860/query-past-the-500-limit-in-gerrit-rest-api
 fun buildUrl(start: Int, pageSize: Int, date: LocalDate, startHour: String = "00", endHour: String = "23"): String {
-    val query = URLEncoder.encode("after:{$date $startHour:00:00.000} AND before:{$date $endHour:59:99.999}", StandardCharsets.UTF_8)
+    val query = URLEncoder.encode("after:{$date $startHour:00:00.000} AND before:{$date $endHour:59:59.999}", StandardCharsets.UTF_8)
     return "https://android-review.googlesource.com/changes/?O=81&S=$start&n=${pageSize}&q=$query"
 }
 
 fun request(url: String): String {
-    val client = HttpClient.newBuilder()
-        .followRedirects(HttpClient.Redirect.ALWAYS)
-        .build()
-
     val request = HttpRequest.newBuilder()
         .header("cookie", cookie)
         .header("user-agent", userAgent)
@@ -86,9 +85,37 @@ fun request(url: String): String {
         .uri(URI.create(url))
         .build()
 
-    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-    require(response.statusCode() in 200..399) {
-        "url: $url retcode: ${response.statusCode()}"
+    var attempt = 1
+    val maxAttempts = 5
+    var lastFailure: Exception? = null
+    while (attempt <= maxAttempts) {
+        try {
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            val status = response.statusCode()
+            if (status in 200..399) {
+                return response.body()
+            }
+            if (status == 400) {
+                throw IllegalArgumentException("url: $url retcode: $status")
+            }
+            if (status == 408 || status == 429 || status >= 500) {
+                val backoffMillis = attempt * 1000L
+                println("Request failed with $status, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
+                Thread.sleep(backoffMillis)
+                attempt += 1
+                continue
+            }
+            throw IllegalArgumentException("url: $url retcode: $status")
+        } catch (e: Exception) {
+            if (e.message?.contains("retcode: 400") == true) {
+                throw e
+            }
+            lastFailure = e
+            val backoffMillis = attempt * 1000L
+            println("Request error ${e::class.simpleName}, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
+            Thread.sleep(backoffMillis)
+            attempt += 1
+        }
     }
-    return response.body()
+    throw IllegalStateException("url: $url failed after $maxAttempts attempts", lastFailure)
 }
