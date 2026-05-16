@@ -106,10 +106,9 @@ fun request(url: String): String {
                 continue
             }
             throw IllegalArgumentException("url: $url retcode: $status")
+        } catch (e: IllegalArgumentException) {
+            throw e
         } catch (e: Exception) {
-            if (e.message?.contains("retcode: 400") == true) {
-                throw e
-            }
             lastFailure = e
             val backoffMillis = attempt * 1000L
             println("Request error ${e::class.simpleName}, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
