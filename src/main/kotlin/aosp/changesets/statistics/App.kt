@@ -99,7 +99,7 @@ fun request(url: String): String {
                 throw IllegalArgumentException("url: $url retcode: $status")
             }
             if (status == 408 || status == 429 || status >= 500) {
-                val backoffMillis = attempt * 1000L
+                val backoffMillis = 1000L * (1L shl (attempt - 1))
                 println("Request failed with $status, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
                 Thread.sleep(backoffMillis)
                 attempt += 1
@@ -110,7 +110,7 @@ fun request(url: String): String {
             throw e
         } catch (e: Exception) {
             lastFailure = e
-            val backoffMillis = attempt * 1000L
+            val backoffMillis = 1000L * (1L shl (attempt - 1))
             println("Request error ${e::class.simpleName}, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
             Thread.sleep(backoffMillis)
             attempt += 1
