@@ -17,9 +17,6 @@ fun main() {
     }
 
     jsonFiles.forEach {
-        if (!it.name.endsWith(".json")) {
-            return@forEach
-        }
         val changesets = objectMapper.readValue(it, object : TypeReference<List<Changeset>>() {})
         for (changeset in changesets) {
             val emailDomain = changeset.submitter?.email?.substringAfter("@") ?: changeset.owner?.email?.substringAfter("@") ?: continue
@@ -62,9 +59,18 @@ fun main() {
 
 fun MutableMap<String, Long>.toCsv(outputFile: File) {
     val lines = entries.sortedByDescending { it.value }
-        .map { "${it.key},${it.value}" }
+        .map { "${it.key.csvEscape()},${it.value}" }
     outputFile.printWriter().use { writer ->
         lines.forEach { writer.println(it) }
     }
     lines.forEach { println(it) }
+}
+
+fun String.csvEscape(): String {
+    val escaped = replace("\"", "\"\"")
+    return if (contains(",") || contains("\"") || contains("\n") || contains("\r")) {
+        "\"$escaped\""
+    } else {
+        escaped
+    }
 }
