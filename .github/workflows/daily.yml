@@ -17,3 +17,9 @@ jobs:
           java-version: "11"
       - name: Fetch data and analyze
         run: ./gradlew run analyze -Dsince=2015-01-01
+      - name: Upload analysis CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-csv
+          path: build/analysis/*.csv
+          if-no-files-found: error

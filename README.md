@@ -29,3 +29,4 @@ The progress can be auto-recovered if the program crashes or is interrupted.
 
 To analyze the data, an example is present at `EmailDomainAnalysis`. 
 You can run `./gradlew analyze` to analyze the generated JSON data.
+CSV outputs are written to `build/analysis` (for example `domain_by_changeset_number.csv`).
