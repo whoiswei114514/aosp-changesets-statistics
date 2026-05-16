@@ -68,10 +68,10 @@ fun MutableMap<String, Long>.toCsv(outputFile: File) {
 
 fun String.csvEscape(): String {
     val needsQuote = contains(",") || contains("\"") || contains("\n") || contains("\r")
-    val escaped = if (needsQuote) replace("\"", "\"\"") else this
+    val escaped = replace("\"", "\"\"")
     return if (needsQuote) {
         "\"$escaped\""
     } else {
-        escaped
+        this
     }
 }
