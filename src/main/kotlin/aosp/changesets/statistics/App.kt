@@ -14,6 +14,7 @@ import java.time.LocalDate
 val cookie = "G_ENABLED_IDPS=google; _ga=GA1.2.1732494902.1615457523; _gid=GA1.2.1254773446.1615457523"
 val userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"
 val defaultPageSize = 100
+const val maxBackoffMillis = 10000L
 
 fun main() {
     val sinceDate = LocalDate.parse(System.clearProperty("since") ?: throw IllegalArgumentException("You must set -Dsince=yyyy-MM-dd!"))
@@ -99,7 +100,7 @@ fun request(url: String): String {
                 throw IllegalArgumentException("url: $url retcode: $status")
             }
             if (status == 408 || status == 429 || status >= 500) {
-                val backoffMillis = minOf(10000L, 1000L * (1L shl (attempt - 1)))
+                val backoffMillis = minOf(maxBackoffMillis, 1000L * (1L shl (attempt - 1)))
                 println("Request failed with $status, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
                 Thread.sleep(backoffMillis)
                 attempt += 1
@@ -110,7 +111,7 @@ fun request(url: String): String {
             throw e
         } catch (e: Exception) {
             lastFailure = e
-            val backoffMillis = minOf(10000L, 1000L * (1L shl (attempt - 1)))
+            val backoffMillis = minOf(maxBackoffMillis, 1000L * (1L shl (attempt - 1)))
             println("Request error ${e::class.simpleName}, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
             Thread.sleep(backoffMillis)
             attempt += 1
