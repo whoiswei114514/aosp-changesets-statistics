@@ -86,10 +86,10 @@ fun request(url: String): String {
         .uri(URI.create(url))
         .build()
 
-    var attempt = 1
+    var attempt = 0
     val maxAttempts = 5
     var lastFailure: Exception? = null
-    while (attempt <= maxAttempts) {
+    while (attempt < maxAttempts) {
         try {
             val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
             val status = response.statusCode()
@@ -100,8 +100,8 @@ fun request(url: String): String {
                 throw IllegalArgumentException("url: $url retcode: $status")
             }
             if (status == 408 || status == 429 || status >= 500) {
-                val backoffMillis = minOf(maxBackoffMillis, 1000L * (1L shl (attempt - 1)))
-                println("Request failed with $status, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
+                val backoffMillis = minOf(maxBackoffMillis, 1000L * (1L shl attempt))
+                println("Request failed with $status, retrying in ${backoffMillis}ms (attempt ${attempt + 1}/$maxAttempts)")
                 Thread.sleep(backoffMillis)
                 attempt += 1
                 continue
@@ -111,8 +111,8 @@ fun request(url: String): String {
             throw e
         } catch (e: Exception) {
             lastFailure = e
-            val backoffMillis = minOf(maxBackoffMillis, 1000L * (1L shl (attempt - 1)))
-            println("Request error ${e::class.simpleName}, retrying in ${backoffMillis}ms (attempt $attempt/$maxAttempts)")
+            val backoffMillis = minOf(maxBackoffMillis, 1000L * (1L shl attempt))
+            println("Request error ${e::class.simpleName}, retrying in ${backoffMillis}ms (attempt ${attempt + 1}/$maxAttempts)")
             Thread.sleep(backoffMillis)
             attempt += 1
         }
